@@ -1,0 +1,10 @@
+package example
+
+modules = Control.Comonad,
+          GameOfLife,
+          Main
+
+main = Main
+executable = sdl_example
+
+opts = "-p contrib -p sdl"

@@ -1,0 +1,15 @@
+package sdl
+
+sourcedir = "src"
+
+modules =
+    SDL.Types,
+    SDL.Foreign,
+    SDL
+
+depends = contrib
+
+preclean = "make -C sdl_glue clean"
+prebuild = "make -C sdl_glue"
+
+postinstall = "make -C sdl_glue install"
