@@ -3,6 +3,7 @@ package sdl
 sourcedir = "src"
 
 modules =
+    SDL.Keysym,
     SDL.Types,
     SDL.Foreign,
     SDL

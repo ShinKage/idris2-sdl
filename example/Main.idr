@@ -30,7 +30,7 @@ red = RGBA 255 0 0 255
 putError : Has [Console] e => SDLError -> App1 {u=Any} e ()
 putError = app . putStrLn . show
 
-data Life : Type where
+data Life : Type where -- Label for State
 
 record LifeState where
   constructor MkLifeState
@@ -43,8 +43,12 @@ record LifeState where
   isPlaying : Bool
   averageUpdateTime : (Integer, Integer)
 
-drawBoard : Has [Console, SDLInterface] e => Nat -> List (Nat, Nat, Cell) -> (1 _ : SDL WithRenderer) -> App1 e (SDL WithRenderer)
-drawBoard _ [] s = pure1 s
+drawBoard : Has [Console, SDLInterface] e
+         => (scale : Nat)
+         -> (cells : List (Nat, Nat, Cell))
+         -> (1 _ : SDL WithRenderer)
+         -> App1 e (SDL WithRenderer)
+drawBoard scale [] s = pure1 s
 drawBoard scale ((_, _, Dead) :: cs) s = drawBoard scale cs s
 drawBoard scale ((col, row, Alive) :: cs) s = do
   let rect = MkRect (cast $ row * scale) (cast $ col * scale) (cast scale) (cast scale)
@@ -52,8 +56,9 @@ drawBoard scale ((col, row, Alive) :: cs) s = do
     | Failure s err => do putError err; pure1 s
   drawBoard scale cs s
 
-drawGame : Has [State Life LifeState, PrimIO, SDLInterface] e =>
-           (1 _ : SDL WithRenderer) -> App1 e (SDL WithRenderer)
+drawGame : Has [State Life LifeState, PrimIO, SDLInterface] e
+        => (1 _ : SDL WithRenderer)
+        -> App1 e (SDL WithRenderer)
 drawGame s = do
   Success s <- setColor black s
     | Failure s err => do putError err; pure1 s
@@ -67,31 +72,32 @@ drawGame s = do
 
 onKeyEvent : Has [State Life LifeState, PrimIO, SDLInterface] e => SDLKeyboardEvent -> App {l = NoThrow} e ()
 onKeyEvent evt = case evt.keycode of
-  0x72 => do
+  KeyR => do
     rnd <- primIO $ randomGame {radius=14}
     modify Life (record { game = rnd, isPlaying = False })
-  0x73 => modify Life (record { isPlaying $= not })
-  0x6E => do
+  KeyS => modify Life (record { isPlaying $= not })
+  KeyN => do
     st <- get Life
-    if st.isPlaying
-       then pure ()
-       else modify Life (record { game $= nextStep })
-  0x2D => do
+    when (not st.isPlaying) $
+       modify Life (record { game $= nextStep })
+  Minus => do
     st <- get Life
     putStrLn $ "=> Updated frequency to " ++ show (st.frequency + 1)
     modify Life (record { frequency $= S })
-  0x2B => do
+  Plus => do
     st <- get Life
     let newFreq = max 1 (st.frequency `minus` 1)
     putStrLn $ "=> Updated frequency to " ++ show newFreq
     modify Life (record { frequency = newFreq })
-  0x4000004F => modify Life (record { game $= rightShift })
-  0x40000050 => modify Life (record { game $= leftShift })
-  0x40000051 => modify Life (record { game $= downShift })
-  0x40000052 => modify Life (record { game $= upShift })
+  Right => modify Life (record { game $= rightShift })
+  Left => modify Life (record { game $= leftShift })
+  Down => modify Life (record { game $= downShift })
+  Up => modify Life (record { game $= upShift })
   _ => pure ()
 
-eventLoop : Has [State Life LifeState, PrimIO, SDLInterface] e => (1 _ : SDL WithRenderer) -> App1 e (SDL WithRenderer)
+eventLoop : Has [State Life LifeState, PrimIO, SDLInterface] e
+         => (1 _ : SDL WithRenderer)
+         -> App1 e (SDL WithRenderer)
 eventLoop s = do
   st <- app $ get Life
   now <- app $ primIO $ clockTime Monotonic
@@ -120,11 +126,10 @@ eventLoop s = do
               eventLoop s
 
 defaultWindowOpts : SDLWindowOptions
-defaultWindowOpts = MkSDLWindowOptions "test" SDLWindowPosCentered SDLWindowPosCentered 500 500 []
+defaultWindowOpts = MkSDLWindowOptions "Example" SDLWindowPosCentered SDLWindowPosCentered 500 500 []
 
-test : Has [State Life LifeState, Console, PrimIO, SDLInterface] e => App e ()
-test = initSDL [SDLInitVideo] (\err => putStrLn $ "Fatal error: " ++ show err) $ \s => app1 $ do
-  -- s <- initSDL [SDLInitVideo]
+win : Has [State Life LifeState, Console, PrimIO, SDLInterface] e => App e ()
+win = initSDL [SDLInitVideo] (\err => putStrLn $ "Fatal error: " ++ show err) $ \s => app1 $ do
   app $ primIO $ putStrLn "=> SDL Inited"
 
   st <- app $ get Life
@@ -153,4 +158,4 @@ main : IO ()
 main = do
   clock <- clockTime Monotonic
   rnd <- randomGame {radius=14} -- total dim is (14 + 1) * 2 + 1
-  run $ new (MkLifeState rnd 10 25 0 clock False (0, 0)) test
+  run $ new (MkLifeState rnd 10 25 0 clock False (0, 0)) win

@@ -3,6 +3,7 @@ module SDL.Foreign
 import Data.Maybe
 import System.FFI
 import SDL.Types
+import SDL.Keysym
 
 %default total
 
@@ -177,22 +178,42 @@ eventType (RawEvent evt) = eventFromInt <$> primIO (prim__sdlGetEventType evt)
 public export
 SDLRawMouseButtonEvent : Type
 SDLRawMouseButtonEvent =
-  Struct "sdl_raw_mousebuttonevent" [ ("button", Int)
-                                    , ("state", Int)
-                                    , ("clicks", Int)
+  Struct "sdl_raw_mousebuttonevent" [ ("type", Bits32)
+                                    , ("timestamp", Bits32)
+                                    , ("windowID", Bits32)
+                                    , ("which", Bits32)
+                                    , ("button", Bits8)
+                                    , ("state", Bits8)
+                                    , ("clicks", Bits8)
                                     , ("x", Int)
                                     , ("y", Int)
                                     ]
 
 public export
+SDLRawMouseMotionEvent : Type
+SDLRawMouseMotionEvent =
+  Struct "sdl_raw_mousemotionevent" [ ("type", Bits32)
+                                    , ("timestamp", Bits32)
+                                    , ("windowID", Bits32)
+                                    , ("which", Bits32)
+                                    , ("state", Bits32)
+                                    , ("x", Int)
+                                    , ("y", Int)
+                                    , ("xrel", Int)
+                                    , ("yrel", Int)
+                                    ]
+
+public export
 SDLRawKeyboardEvent : Type
 SDLRawKeyboardEvent =
-  Struct "sdl_raw_keyboardevent" [ ("type", Int)
-                                 , ("state", Int)
-                                 , ("repeat", Int)
+  Struct "sdl_raw_keyboardevent" [ ("type", Bits32)
+                                 , ("timestamp", Bits32)
+                                 , ("windowID", Bits32)
+                                 , ("state", Bits8)
+                                 , ("repeat", Bits8)
                                  , ("scancode", Int)
                                  , ("keycode", Int)
-                                 , ("mod", Int)
+                                 , ("mod", Bits16)
                                  ]
 
 public export
@@ -201,9 +222,9 @@ RawEventStruct SDLQuit = ()
 RawEventStruct SDLWindowEvent = ()
 RawEventStruct SDLKeyDown = SDLKeyboardEvent
 RawEventStruct SDLKeyUp = SDLKeyboardEvent
-RawEventStruct SDLMouseMotion = SDLMouseEvent
-RawEventStruct SDLMouseButtonDown = SDLMouseEvent
-RawEventStruct SDLMouseButtonUp = SDLMouseEvent
+RawEventStruct SDLMouseMotion = SDLMouseMotionEvent
+RawEventStruct SDLMouseButtonDown = SDLMouseButtonEvent
+RawEventStruct SDLMouseButtonUp = SDLMouseButtonEvent
 RawEventStruct SDLGenericEvent = ()
 
 %foreign libsdl "sdl_get_mouse_button_event"
@@ -218,13 +239,30 @@ freeMouseButtonEvent evt = primIO $ prim__sdlFreeRawMouseButtonEvent evt
 getMouseButtonEvent : SDLRawEvent -> SDLRawMouseButtonEvent
 getMouseButtonEvent (RawEvent evt) = prim__sdlGetMouseButtonEvent evt
 
-fromRawMouseEvent : SDLRawMouseButtonEvent -> SDLMouseEvent
-fromRawMouseEvent evt = let button : Int = getField evt "button"
-                            state : Int = getField evt "state"
-                            clicks : Int = getField evt "clicks"
-                            x : Int = getField evt "x"
-                            y : Int = getField evt "y" in
-                            MkMouseEvent button state clicks x y
+fromRawMouseButtonEvent : SDLRawMouseButtonEvent -> Maybe SDLMouseButtonEvent
+fromRawMouseButtonEvent evt =
+  Just $ MkMouseButtonEvent (getField evt "timestamp") (getField evt "windowID") (getField evt "which")
+                            !(mouseButtonFromBits $ getField evt "button")
+                            !(buttonStateFromBits $ getField evt "state")
+                            (getField evt "clicks") (getField evt "x") (getField evt "y")
+
+%foreign libsdl "sdl_get_mouse_motion_event"
+prim__sdlGetMouseMotionEvent : GCAnyPtr -> SDLRawMouseMotionEvent
+
+%foreign libsdl "sdl_free_raw_mousemotionevent"
+prim__sdlFreeRawMouseMotionEvent : SDLRawMouseMotionEvent -> PrimIO ()
+
+freeMouseMotionEvent : SDLRawMouseMotionEvent -> IO ()
+freeMouseMotionEvent evt = primIO $ prim__sdlFreeRawMouseMotionEvent evt
+
+getMouseMotionEvent : SDLRawEvent -> SDLRawMouseMotionEvent
+getMouseMotionEvent (RawEvent evt) = prim__sdlGetMouseMotionEvent evt
+
+fromRawMouseMotionEvent : SDLRawMouseMotionEvent -> SDLMouseMotionEvent
+fromRawMouseMotionEvent evt =
+  MkMouseMotionEvent (getField evt "timestamp") (getField evt "windowID") (getField evt "which")
+                     (getField evt "state") (getField evt "x") (getField evt "y")
+                     (getField evt "xrel") (getField evt "yrel")
 
 %foreign libsdl "sdl_get_keyboard_event"
 prim__sdlGetKeyboardEvent : GCAnyPtr -> SDLRawKeyboardEvent
@@ -238,46 +276,44 @@ freeKeyboardEvent evt = primIO $ prim__sdlFreeRawKeyboardEvent evt
 getKeyboardEvent : SDLRawEvent -> SDLRawKeyboardEvent
 getKeyboardEvent (RawEvent evt) = prim__sdlGetKeyboardEvent evt
 
-fromRawKeyboardEvent : SDLRawKeyboardEvent -> SDLKeyboardEvent
-fromRawKeyboardEvent evt = let type : Int = getField evt "type"
-                               state : Int = getField evt "state"
-                               repeat : Int = getField evt "repeat"
-                               scancode : Int = getField evt "scancode"
-                               keycode : Int = getField evt "keycode"
-                               mod : Int = getField evt "mod" in
-                               MkKeyboardEvent type state repeat scancode keycode mod
+fromRawKeyboardEvent : SDLRawKeyboardEvent -> Maybe SDLKeyboardEvent
+fromRawKeyboardEvent evt =
+  Just $ MkKeyboardEvent (getField evt "timestamp") (getField evt "windowID")
+                         !(buttonStateFromBits $ getField evt "state")
+                         (getField evt "repeat") (getField evt "scancode")
+                         (keycodeFromInt $ getField evt "keycode") (keymodsFromBits $ getField evt "mod")
 
 export
-getEvent : SDLRawEvent -> IO (t : SDLEventType ** RawEventStruct t)
+getEvent : SDLRawEvent -> IO (Maybe (t : SDLEventType ** RawEventStruct t))
 getEvent evt = case !(eventType evt) of
   SDLMouseMotion => do
-    let raw = getMouseButtonEvent evt
-    let evt' = fromRawMouseEvent raw
-    freeMouseButtonEvent raw
-    pure (SDLMouseMotion ** evt')
+    let raw = getMouseMotionEvent evt
+    let evt' = fromRawMouseMotionEvent raw
+    freeMouseMotionEvent raw
+    pure $ Just (SDLMouseMotion ** evt')
   SDLMouseButtonDown => do
     let raw = getMouseButtonEvent evt
-    let evt' = fromRawMouseEvent raw
+    let evt' = fromRawMouseButtonEvent raw
     freeMouseButtonEvent raw
-    pure (SDLMouseButtonDown ** evt')
+    pure $ MkDPair SDLMouseButtonDown <$> evt'
   SDLMouseButtonUp => do
     let raw = getMouseButtonEvent evt
-    let evt' = fromRawMouseEvent raw
+    let evt' = fromRawMouseButtonEvent raw
     freeMouseButtonEvent raw
-    pure (SDLMouseButtonUp ** evt')
+    pure $ MkDPair SDLMouseButtonUp <$> evt'
   SDLKeyDown => do
     let raw = getKeyboardEvent evt
     let evt' = fromRawKeyboardEvent raw
     freeKeyboardEvent raw
-    pure (SDLKeyDown ** evt')
+    pure $ MkDPair SDLKeyDown <$> evt'
   SDLKeyUp => do
     let raw = getKeyboardEvent evt
     let evt' = fromRawKeyboardEvent raw
     freeKeyboardEvent raw
-    pure (SDLKeyUp ** evt')
-  SDLQuit => pure (SDLQuit ** ())
-  SDLWindowEvent => pure (SDLWindowEvent ** ())
-  SDLGenericEvent => pure (SDLGenericEvent ** ())
+    pure $ MkDPair SDLKeyUp <$> evt'
+  SDLQuit => pure $ Just (SDLQuit ** ())
+  SDLWindowEvent => pure $ Just (SDLWindowEvent ** ())
+  SDLGenericEvent => pure $ Just (SDLGenericEvent ** ())
 
 %foreign libsdl "sdl_delay"
 prim__sdlDelay : Int -> PrimIO ()

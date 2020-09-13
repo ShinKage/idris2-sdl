@@ -2,6 +2,7 @@
 #define _IDRIS_SDL_H
 
 #include <stdlib.h>
+#include <stdint.h>
 
 #include <SDL2/SDL.h>
 
@@ -29,22 +30,42 @@ void* sdl_poll_event();
 int sdl_get_event_type(void* evt);
 
 typedef struct {
-    int button;
-    int state;
-    int clicks;
-    int x;
-    int y;
+    uint32_t type;
+    uint32_t timestamp;
+    uint32_t windowID;
+    uint32_t which;
+    uint8_t button;
+    uint8_t state;
+    uint8_t clicks;
+    int32_t x;
+    int32_t y;
 } sdl_raw_mousebuttonevent;
 sdl_raw_mousebuttonevent* sdl_get_mouse_button_event(void* evt);
 void sdl_free_raw_mousebuttonevent(sdl_raw_mousebuttonevent* evt);
 
 typedef struct {
-    int type;
-    int state;
-    int repeat;
+    uint32_t type;
+    uint32_t timestamp;
+    uint32_t windowID;
+    uint32_t which;
+    uint32_t state;
+    int32_t x;
+    int32_t y;
+    int32_t xrel;
+    int32_t yrel;
+} sdl_raw_mousemotionevent;
+sdl_raw_mousemotionevent* sdl_get_mouse_motion_event(void* evt);
+void sdl_free_raw_mousemotionevent(sdl_raw_mousemotionevent* evt);
+
+typedef struct {
+    uint32_t type;
+    uint32_t timestamp;
+    uint32_t windowID;
+    uint8_t state;
+    uint8_t repeat;
     int scancode;
     int keycode;
-    int mod;
+    uint16_t mod;
 } sdl_raw_keyboardevent;
 sdl_raw_keyboardevent* sdl_get_keyboard_event(void* evt);
 void sdl_free_raw_keyboardevent(sdl_raw_mousebuttonevent* evt);

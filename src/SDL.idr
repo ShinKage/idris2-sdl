@@ -3,6 +3,7 @@ module SDL
 import Control.App
 import Control.App.Console
 import public SDL.Types
+import public SDL.Keysym
 import SDL.Foreign
 
 %default total
@@ -89,7 +90,7 @@ Has [PrimIO] e => SDLInterface e where
 
   pollEvent = case !(primIO pollEvent) of
     Nothing => pure Nothing
-    Just raw => pure $ Just !(primIO $ getEvent raw)
+    Just raw => primIO $ getEvent raw
 
 export
 delaySDL : Has [PrimIO] e => Nat -> App1 {u=Any} e ()

@@ -90,6 +90,10 @@ int sdl_get_event_type(void* evt) {
 sdl_raw_mousebuttonevent* sdl_get_mouse_button_event(void* evt) {
     SDL_Event* event = (SDL_Event*) evt;
     sdl_raw_mousebuttonevent* mevt = malloc(sizeof(sdl_raw_mousebuttonevent));
+    mevt->type = event->button.type;
+    mevt->timestamp = event->button.timestamp;
+    mevt->windowID = event->button.windowID;
+    mevt->which = event->button.which;
     mevt->button = event->button.button;
     mevt->state = event->button.state;
     mevt->clicks = event->button.clicks;
@@ -102,10 +106,31 @@ void sdl_free_raw_mousebuttonevent(sdl_raw_mousebuttonevent* evt) {
     free(evt);
 }
 
+sdl_raw_mousemotionevent* sdl_get_mouse_motion_event(void* evt) {
+    SDL_Event* event = (SDL_Event*) evt;
+    sdl_raw_mousemotionevent* mevt = malloc(sizeof(sdl_raw_mousemotionevent));
+    mevt->type = event->motion.type;
+    mevt->timestamp = event->motion.timestamp;
+    mevt->windowID = event->motion.windowID;
+    mevt->which = event->motion.which;
+    mevt->state = event->motion.state;
+    mevt->x = event->motion.x;
+    mevt->y = event->motion.y;
+    mevt->xrel = event->motion.xrel;
+    mevt->yrel = event->motion.yrel;
+    return mevt;
+}
+
+void sdl_free_raw_mousemotionevent(sdl_raw_mousemotionevent* evt) {
+    free(evt);
+}
+
 sdl_raw_keyboardevent* sdl_get_keyboard_event(void* evt) {
     SDL_Event* event = (SDL_Event*) evt;
     sdl_raw_keyboardevent* kevt = malloc(sizeof(sdl_raw_keyboardevent));
     kevt->type = event->key.type;
+    kevt->timestamp = event->key.timestamp;
+    kevt->windowID = event->key.windowID;
     kevt->state = event->key.state;
     kevt->repeat = event->key.repeat;
     kevt->scancode = event->key.keysym.scancode;
