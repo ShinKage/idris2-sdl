@@ -1,7 +1,7 @@
 module Main
 
-import Control.App
-import Control.App.Console
+import Control.Linear.LIO
+import Data.IORef
 import Data.Nat
 import Data.Vect
 import System.Clock
@@ -27,8 +27,32 @@ red : SDLColor
 red = RGBA 255 0 0 255
 %auto_implicit_depth 50
 
-putError : Has [Console] e => SDLError -> App1 {u=Any} e ()
-putError = app . putStrLn . show
+data Ref : (l : label) -> Type -> Type where
+  [search l]
+  MkRef : IORef a -> Ref x a
+
+export
+newRef : HasIO io => (x : label) -> t -> io (Ref x t)
+newRef x val
+    = do ref <- liftIO $ newIORef val
+         pure (MkRef ref)
+
+export %inline
+get : HasIO io => (x : label) -> {auto ref : Ref x a} -> io a
+get x {ref = MkRef io} = liftIO $ readIORef io
+
+export %inline
+put : HasIO io => (x : label) -> {auto ref : Ref x a} -> a -> io ()
+put x {ref = MkRef io} val = liftIO $ writeIORef io val
+
+export %inline
+modify : HasIO io => (x : label) -> {auto ref : Ref x a} -> (a -> a) -> io ()
+modify x f = do
+  ref <- get x
+  put x (f ref)
+
+putError : LinearIO io => (err : SDLError) -> L io ()
+putError = putStrLn . show
 
 data Life : Type where -- Label for State
 
@@ -43,11 +67,11 @@ record LifeState where
   isPlaying : Bool
   averageUpdateTime : (Integer, Integer)
 
-drawBoard : Has [Console, SDLInterface] e
+drawBoard : LinearIO io
          => (scale : Nat)
          -> (cells : List (Nat, Nat, Cell))
          -> (1 _ : SDL WithRenderer)
-         -> App1 e (SDL WithRenderer)
+         -> L {use = 1} io (SDL WithRenderer)
 drawBoard scale [] s = pure1 s
 drawBoard scale ((_, _, Dead) :: cs) s = drawBoard scale cs s
 drawBoard scale ((col, row, Alive) :: cs) s = do
@@ -56,9 +80,9 @@ drawBoard scale ((col, row, Alive) :: cs) s = do
     | Failure s err => do putError err; pure1 s
   drawBoard scale cs s
 
-drawGame : Has [State Life LifeState, PrimIO, SDLInterface] e
+drawGame : (LinearIO io, Ref Life LifeState)
         => (1 _ : SDL WithRenderer)
-        -> App1 e (SDL WithRenderer)
+        -> L {use = 1} io (SDL WithRenderer)
 drawGame s = do
   Success s <- setColor black s
     | Failure s err => do putError err; pure1 s
@@ -66,14 +90,14 @@ drawGame s = do
     | Failure s err => do putError err; pure1 s
   Success s <- setColor red s
     | Failure s err => do putError err; pure1 s
-  st <- app $ get Life
+  st <- get Life
   let board = gameSquare st.game
   drawBoard st.scale board s
 
-onKeyEvent : Has [State Life LifeState, PrimIO, SDLInterface] e => SDLKeyboardEvent -> App {l = NoThrow} e ()
+onKeyEvent : (LinearIO io, Ref Life LifeState) => (event : SDLKeyboardEvent) -> L io ()
 onKeyEvent evt = case evt.keycode of
   KeyR => do
-    rnd <- primIO $ randomGame {radius=14}
+    rnd <- liftIO $ randomGame {radius=14}
     modify Life (record { game = rnd, isPlaying = False })
   KeyS => modify Life (record { isPlaying $= not })
   KeyN => do
@@ -95,67 +119,66 @@ onKeyEvent evt = case evt.keycode of
   Up => modify Life (record { game $= upShift })
   _ => pure ()
 
-eventLoop : Has [State Life LifeState, PrimIO, SDLInterface] e
+eventLoop : (LinearIO io, Ref Life LifeState)
          => (1 _ : SDL WithRenderer)
-         -> App1 e (SDL WithRenderer)
+         -> L {use = 1} io (SDL WithRenderer)
 eventLoop s = do
-  st <- app $ get Life
-  now <- app $ primIO $ clockTime Monotonic
+  st <- get Life
+  now <- liftIO $ clockTime Monotonic
   let delta = timeDifference now st.lastTick
   if nanoseconds delta < 16000
      then eventLoop s
      else do
-       app $ modify Life (record { lastTick = now, elapsedTicks $= S })
-       if st.isPlaying && st.elapsedTicks >= st.frequency
-          then do
-            let (n, avg) = st.averageUpdateTime
-            let avg' = ((nanoseconds now) + n * avg) `div` (n + 1)
-            app $ putStrLn $ "INFO: Average time " ++ show (avg' `div` 1000000) ++ " ms"
-            app $ modify Life (record { game $= nextStep, elapsedTicks = 0, averageUpdateTime = (n + 1, avg') })
-          else pure ()
-       case !(app pollEvent) of
-            Just (SDLQuit ** ()) => pure1 s
-            Just (SDLKeyUp ** evt) => do
-              app $ onKeyEvent evt
-              s <- drawGame s
-              s <- render s
-              eventLoop s
-            _ => do
-              s <- drawGame s
-              s <- render s
-              eventLoop s
+       modify Life (record { lastTick = now, elapsedTicks $= S })
+       when (st.isPlaying && st.elapsedTicks >= st.frequency) $ do
+         let (n, avg) = st.averageUpdateTime
+         let avg' = ((nanoseconds now) + n * avg) `div` (n + 1)
+         putStrLn $ "INFO: Average time " ++ show (avg' `div` 1000000) ++ " ms"
+         modify Life (record { game $= nextStep, elapsedTicks = 0, averageUpdateTime = (n + 1, avg') })
+       the (L {use = 1} io (SDL WithRenderer)) $ case !pollEvent of
+         Just (SDLQuit ** ()) => pure1 s
+         Just (SDLKeyUp ** evt) => do
+           onKeyEvent evt
+           s <- drawGame s
+           s <- render s
+           eventLoop s
+         _ => do
+           s <- drawGame s
+           s <- render s
+           eventLoop s
 
 defaultWindowOpts : SDLWindowOptions
 defaultWindowOpts = MkSDLWindowOptions "Example" SDLWindowPosCentered SDLWindowPosCentered 500 500 []
 
-win : Has [State Life LifeState, Console, PrimIO, SDLInterface] e => App e ()
-win = initSDL [SDLInitVideo] (\err => putStrLn $ "Fatal error: " ++ show err) $ \s => app1 $ do
-  app $ primIO $ putStrLn "=> SDL Inited"
+win : (LinearIO io, Ref Life LifeState) => L io ()
+win = initSDL [SDLInitVideo] (\err => putStrLn $ "Fatal error: " ++ show err) $ \s => do
+  putStrLn "=> SDL Inited"
 
-  st <- app $ get Life
+  st <- get Life
   let size : Int = cast $ st.scale * (2 * (st.radius + 1) + 1)
   let winops : SDLWindowOptions = record { width = size, height = size } defaultWindowOpts
   Success s <- newWindow winops s
     | Failure s err => handleInitedError s (putError err)
-  app $ primIO $ putStrLn "=> Window created"
+  putStrLn "=> Window created"
 
   Success s <- newRenderer Nothing [SDLRendererSoftware] s
     | Failure s err => handleWindowedError s (putError err)
-  app $ primIO $ putStrLn "=> Renderer operational"
+  putStrLn "=> Renderer operational"
 
   s <- drawGame s
   s <- render s
   s <- eventLoop s
 
   s <- closeRenderer s
-  app $ primIO $ putStrLn "=> Renderer closed"
+  putStrLn "=> Renderer closed"
   s <- closeWindow s
-  app $ primIO $ putStrLn "=> Window closed"
-  app $ quitSDL s
-  app $ primIO $ putStrLn "=> SDL quitted"
+  putStrLn "=> Window closed"
+  quitSDL s
+  putStrLn "=> SDL quitted"
 
 main : IO ()
 main = do
   clock <- clockTime Monotonic
   rnd <- randomGame {radius=14} -- total dim is (14 + 1) * 2 + 1
-  run $ new (MkLifeState rnd 10 25 0 clock False (0, 0)) win
+  run $ do newRef Life (MkLifeState rnd 10 25 0 clock False (0, 0))
+           win

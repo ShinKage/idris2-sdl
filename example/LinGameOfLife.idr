@@ -188,7 +188,7 @@ gameSquare (MkGame (MkRingZipper before focus after)) =
       concat $ append b ((gameLine n focus) :: a)
 
 export
-randomGame : {radius : Nat} -> IO (Game (S radius) Cell)
+randomGame : HasIO io => {radius : Nat} -> io (Game (S radius) Cell)
 randomGame {radius} = do
     before <- traverse (const randomZipper) $ replicate (S radius) ()
     focus <- randomZipper
@@ -197,7 +197,7 @@ randomGame {radius} = do
   where
     fromInt : Int -> Cell
     fromInt x = if x < 0 then Dead else Alive
-    randomZipper : {n : Nat} -> IO (RingZipper n Cell)
+    randomZipper : {n : Nat} -> io (RingZipper n Cell)
     randomZipper {n} = do
       before <- traverse (const $ fromInt <$> randomIO) $ replicate n ()
       focus <- fromInt <$> randomIO
