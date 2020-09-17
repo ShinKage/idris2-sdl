@@ -27,8 +27,8 @@ INSTALLDIR = `${IDRIS} --libdir`/sdl/lib
 HDRS = idris_sdl.h
 OBJS = idris_sdl.o
 
-SDL_LIBS := -lSDL2
-SDL_FLAGS :=
+SDL_LIBS := -lSDL2 $(shell sdl2-config --libs) -lSDL2_image
+SDL_FLAGS := $(shell sdl2-config --cflags)
 
 CFLAGS = $(SDL_FLAGS)
 

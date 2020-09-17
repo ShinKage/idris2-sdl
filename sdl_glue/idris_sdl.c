@@ -8,7 +8,11 @@ const char* sdl_get_error() {
     return SDL_GetError();
 }
 
-int sdl_init(int flags) {
+const char* sdl_img_get_error() {
+    return IMG_GetError();
+}
+
+int sdl_init(uint32_t flags) {
     return SDL_Init(flags);
 }
 
@@ -16,17 +20,20 @@ void sdl_quit() {
     SDL_Quit();
 }
 
-void* sdl_create_window(const char* title, int x, int y, int w, int h,
-                        int flags) {
+void* sdl_create_window(const char* title, int x, int y, int w, int h, uint32_t flags) {
     SDL_Window* window = SDL_CreateWindow(title, x, y, w, h, flags);
     return (void*) window;
+}
+
+uint32_t sdl_get_window_id(void* window) {
+    return SDL_GetWindowID((SDL_Window*) window);
 }
 
 void sdl_destroy_window(void* window) {
     SDL_DestroyWindow((SDL_Window*) window);
 }
 
-void* sdl_create_renderer(void* win, int index, int flags) {
+void* sdl_create_renderer(void* win, int index, uint32_t flags) {
     SDL_Window* window = (SDL_Window*) win;
     SDL_Renderer* renderer = SDL_CreateRenderer(window, index, flags);
     return (void*) renderer;
@@ -47,7 +54,7 @@ void sdl_render_present(void* rnd) {
     SDL_RenderPresent(renderer);
 }
 
-int sdl_render_set_draw_color(void* rnd, int r, int g, int b, int a) {
+int sdl_render_set_draw_color(void* rnd, uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
     SDL_Renderer* renderer = (SDL_Renderer*) rnd;
     return SDL_SetRenderDrawColor(renderer, r, g, b, a);
 }
@@ -64,13 +71,13 @@ int sdl_render_draw_line(void* rnd, int x1, int y1, int x2, int y2) {
 
 int sdl_render_draw_rect(void* rnd, int x, int y, int w, int h) {
     SDL_Renderer* renderer = (SDL_Renderer*) rnd;
-    SDL_Rect rect = { x, y, w, h };
+    SDL_Rect rect = {x, y, w, h};
     return SDL_RenderDrawRect(renderer, &rect);
 }
 
 int sdl_render_fill_rect(void* rnd, int x, int y, int w, int h) {
     SDL_Renderer* renderer = (SDL_Renderer*) rnd;
-    SDL_Rect rect = { x, y, w, h };
+    SDL_Rect rect = {x, y, w, h};
     return SDL_RenderFillRect(renderer, &rect);
 }
 
@@ -143,6 +150,37 @@ void sdl_free_raw_keyboardevent(sdl_raw_mousebuttonevent* evt) {
     free(evt);
 }
 
-void sdl_delay(int ms) {
+void sdl_free_raw_surface(void* srf) {
+    SDL_Surface* surface = (SDL_Surface*) srf;
+    SDL_FreeSurface(surface);
+}
+
+void* sdl_img_load(const char* path) {
+    SDL_Surface* surface = IMG_Load(path);
+    return (void*) surface;
+}
+
+void* sdl_create_texture_from_surface(void* rnd, void* srf) {
+    SDL_Renderer* renderer = (SDL_Renderer*) rnd;
+    SDL_Surface* surface = (SDL_Surface*) srf;
+    SDL_Texture* texture = SDL_CreateTextureFromSurface(renderer, surface);
+    return (void*) texture;
+}
+
+void destroyTexture(void* txt) {
+    SDL_Texture* texture = (SDL_Texture*) txt;
+    SDL_DestroyTexture(texture);
+}
+
+int sdl_render_copy(void* rnd, void* txt, int srcx, int srcy, int srcw, int srch, int dstx, int dsty, int dstw,
+                    int dsth) {
+    SDL_Renderer* renderer = (SDL_Renderer*) rnd;
+    SDL_Texture* texture = (SDL_Texture*) txt;
+    SDL_Rect src = {srcx, srcy, srcw, srch};
+    SDL_Rect dst = {dstx, dsty, dstw, dsth};
+    return SDL_RenderCopy(renderer, texture, &src, &dst);
+}
+
+void sdl_delay(uint32_t ms) {
     SDL_Delay(ms);
 }

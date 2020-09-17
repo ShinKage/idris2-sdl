@@ -1,6 +1,9 @@
 module SDL.Keysym
 
+import SDL.Elab
+
 %default total
+%language ElabReflection
 
 public export
 data Keycode
@@ -129,133 +132,8 @@ data Keycode
   | RAlt
   | RGui
 
-export
-Eq Keycode where
-  Unknown == Unknown = True
-  Return == Return = True
-  Escape == Escape = True
-  Backspace == Backspace = True
-  Tab == Tab = True
-  Space == Space = True
-  Exclaim == Exclaim = True
-  Quotedbl == Quotedbl = True
-  Hash == Hash = True
-  Percent == Percent = True
-  Dollar == Dollar = True
-  Ampersand == Ampersand = True
-  Quote == Quote = True
-  Leftparen == Leftparen = True
-  Rightparen == Rightparen = True
-  Asterisk == Asterisk = True
-  Plus == Plus = True
-  Comma == Comma = True
-  Minus == Minus = True
-  Period == Period = True
-  Slash == Slash = True
-  N0 == N0 = True
-  N1 == N1 = True
-  N2 == N2 = True
-  N3 == N3 = True
-  N4 == N4 = True
-  N5 == N5 = True
-  N6 == N6 = True
-  N7 == N7 = True
-  N8 == N8 = True
-  N9 == N9 = True
-  Colon == Colon = True
-  Semicolon == Semicolon = True
-  Less == Less = True
-  Equals == Equals = True
-  Greater == Greater = True
-  Question == Question = True
-  At == At = True
-  Leftbracket == Leftbracket = True
-  Backslash == Backslash = True
-  Rightbracket == Rightbracket = True
-  Caret == Caret = True
-  Underscore == Underscore = True
-  Backquote == Backquote = True
-  KeyA == KeyA = True
-  KeyB == KeyB = True
-  KeyC == KeyC = True
-  KeyD == KeyD = True
-  KeyE == KeyE = True
-  KeyF == KeyF = True
-  KeyG == KeyG = True
-  KeyH == KeyH = True
-  KeyI == KeyI = True
-  KeyJ == KeyJ = True
-  KeyK == KeyK = True
-  KeyL == KeyL = True
-  KeyM == KeyM = True
-  KeyN == KeyN = True
-  KeyO == KeyO = True
-  KeyP == KeyP = True
-  KeyQ == KeyQ = True
-  KeyR == KeyR = True
-  KeyS == KeyS = True
-  KeyT == KeyT = True
-  KeyU == KeyU = True
-  KeyV == KeyV = True
-  KeyW == KeyW = True
-  KeyX == KeyX = True
-  KeyY == KeyY = True
-  KeyZ == KeyZ = True
-  Capslock == Capslock = True
-  F1 == F1 = True
-  F2 == F2 = True
-  F3 == F3 = True
-  F4 == F4 = True
-  F5 == F5 = True
-  F6 == F6 = True
-  F7 == F7 = True
-  F8 == F8 = True
-  F9 == F9 = True
-  F10 == F10 = True
-  F11 == F11 = True
-  F12 == F12 = True
-  Printscreen == Printscreen = True
-  Scrolllock == Scrolllock = True
-  Pause == Pause = True
-  Insert == Insert = True
-  Home == Home = True
-  Pageup == Pageup = True
-  Delete == Delete = True
-  End == End = True
-  Pagedown == Pagedown = True
-  Right == Right = True
-  Left == Left = True
-  Down == Down = True
-  Up == Up = True
-  NumlockClear == NumlockClear = True
-  KpDivide == KpDivide = True
-  KpMultiply == KpMultiply = True
-  KpMinus == KpMinus = True
-  KpPlus == KpPlus = True
-  KpEnter == KpEnter = True
-  Kp1 == Kp1 = True
-  Kp2 == Kp2 = True
-  Kp3 == Kp3 = True
-  Kp4 == Kp4 = True
-  Kp5 == Kp5 = True
-  Kp6 == Kp6 = True
-  Kp7 == Kp7 = True
-  Kp8 == Kp8 = True
-  Kp9 == Kp9 = True
-  Kp0 == Kp0 = True
-  KpPeriod == KpPeriod = True
-  KpEquals == KpEquals = True
-  KpComma == KpComma = True
-  Cancel == Cancel = True
-  LCtrl == LCtrl = True
-  LShift == LShift = True
-  LAlt == LAlt = True
-  LGui == LGui = True
-  RCtrl == RCtrl = True
-  RShift == RShift = True
-  RAlt == RAlt = True
-  RGui == RGui = True
-  _ == _ = False
+%runElab deriveUnitSumEq Export `{{Keycode}}
+%runElab deriveUnitSumShow Export `{{Keycode}}
 
 export
 keycodeToInt : Keycode -> Int
@@ -526,6 +404,9 @@ namespace Keymod
     | Num
     | Caps
     | Mode
+
+  %runElab deriveUnitSumEq Export `{{Keymod}}
+  %runElab deriveUnitSumShow Export `{{Keymod}}
 
   keymodMask : Keymod -> Bits16
   keymodMask LShift = 0x0001

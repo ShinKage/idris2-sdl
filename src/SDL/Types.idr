@@ -4,16 +4,20 @@ import Data.Nat
 import System.FFI
 
 import SDL.Keysym
+import SDL.Elab
 
 %default total
+%language ElabReflection
 
 public export
 data SDLError : Type where
   GenericError : String -> SDLError
+  ImageError : String -> SDLError
 
 export
 Show SDLError where
   show (GenericError err) = err
+  show (ImageError err) = err
 
 public export
 data SDLInitFlags : Type where
@@ -25,26 +29,18 @@ data SDLInitFlags : Type where
   SDLInitGameController : SDLInitFlags
   SDLInitEvents : SDLInitFlags
 
-export
-Eq SDLInitFlags where
-  SDLInitTimer == SDLInitTimer = True
-  SDLInitAudio == SDLInitAudio = True
-  SDLInitVideo == SDLInitVideo = True
-  SDLInitJoystick == SDLInitJoystick = True
-  SDLInitHaptic == SDLInitHaptic = True
-  SDLInitGameController == SDLInitGameController = True
-  SDLInitEvents == SDLInitEvents = True
-  _ == _ = False
+%runElab deriveUnitSumEq Export `{{SDLInitFlags}}
+%runElab deriveUnitSumShow Export `{{SDLInitFlags}}
 
 export
-initFlagsToInt : SDLInitFlags -> Int
-initFlagsToInt SDLInitTimer = 0x00000001
-initFlagsToInt SDLInitAudio = 0x00000010
-initFlagsToInt SDLInitVideo = 0x00000020
-initFlagsToInt SDLInitJoystick = 0x00000200
-initFlagsToInt SDLInitHaptic = 0x00001000
-initFlagsToInt SDLInitGameController = 0x00002000
-initFlagsToInt SDLInitEvents = 0x00004000
+initFlagsToBits : SDLInitFlags -> Bits32
+initFlagsToBits SDLInitTimer = 0x00000001
+initFlagsToBits SDLInitAudio = 0x00000010
+initFlagsToBits SDLInitVideo = 0x00000020
+initFlagsToBits SDLInitJoystick = 0x00000200
+initFlagsToBits SDLInitHaptic = 0x00001000
+initFlagsToBits SDLInitGameController = 0x00002000
+initFlagsToBits SDLInitEvents = 0x00004000
 
 export
 sdlInitEverything : List SDLInitFlags
@@ -52,7 +48,7 @@ sdlInitEverything = [SDLInitTimer, SDLInitAudio, SDLInitVideo, SDLInitJoystick, 
 
 public export
 data SDLWindow : Type where
-  Window : AnyPtr -> SDLWindow
+  Window : Bits32 -> AnyPtr -> SDLWindow
 
 public export
 data SDLWindowPos : Type where
@@ -87,34 +83,22 @@ data SDLWindowFlags : Type where
   SDLWindowInputGrabbed : SDLWindowFlags
   SDLWindowAllowHighDPI : SDLWindowFlags
 
-export
-Eq SDLWindowFlags where
-  SDLWindowFullscreen == SDLWindowFullscreen = True
-  SDLWindowFullscreenDesktop == SDLWindowFullscreenDesktop = True
-  SDLWindowOpenGL == SDLWindowOpenGL = True
-  SDLWindowVulkan == SDLWindowVulkan = True
-  SDLWindowHidden == SDLWindowHidden = True
-  SDLWindowBorderless == SDLWindowBorderless = True
-  SDLWindowResizable == SDLWindowResizable = True
-  SDLWindowMinimized == SDLWindowMinimized = True
-  SDLWindowMaximized == SDLWindowMaximized = True
-  SDLWindowInputGrabbed == SDLWindowInputGrabbed = True
-  SDLWindowAllowHighDPI == SDLWindowAllowHighDPI = True
-  _ == _ = False
+%runElab deriveUnitSumEq Export `{{SDLWindowFlags}}
+%runElab deriveUnitSumShow Export `{{SDLWindowFlags}}
 
 export
-windowFlagsToInt : SDLWindowFlags -> Int
-windowFlagsToInt SDLWindowFullscreen = 0x00000001
-windowFlagsToInt SDLWindowFullscreenDesktop = 0x00001001
-windowFlagsToInt SDLWindowOpenGL = 0x00000002
-windowFlagsToInt SDLWindowVulkan = 0x10000000
-windowFlagsToInt SDLWindowHidden = 0x00000008
-windowFlagsToInt SDLWindowBorderless = 0x00000010
-windowFlagsToInt SDLWindowResizable = 0x00000020
-windowFlagsToInt SDLWindowMinimized = 0x00000040
-windowFlagsToInt SDLWindowMaximized = 0x00000080
-windowFlagsToInt SDLWindowInputGrabbed = 0x00000100
-windowFlagsToInt SDLWindowAllowHighDPI = 0x00002000
+windowFlagsToBits : SDLWindowFlags -> Bits32
+windowFlagsToBits SDLWindowFullscreen = 0x00000001
+windowFlagsToBits SDLWindowFullscreenDesktop = 0x00001001
+windowFlagsToBits SDLWindowOpenGL = 0x00000002
+windowFlagsToBits SDLWindowVulkan = 0x10000000
+windowFlagsToBits SDLWindowHidden = 0x00000008
+windowFlagsToBits SDLWindowBorderless = 0x00000010
+windowFlagsToBits SDLWindowResizable = 0x00000020
+windowFlagsToBits SDLWindowMinimized = 0x00000040
+windowFlagsToBits SDLWindowMaximized = 0x00000080
+windowFlagsToBits SDLWindowInputGrabbed = 0x00000100
+windowFlagsToBits SDLWindowAllowHighDPI = 0x00002000
 
 public export
 record SDLWindowOptions where
@@ -131,6 +115,10 @@ data SDLSurface : Type where
   Surface : AnyPtr -> SDLSurface
 
 public export
+data SDLTexture : Type where
+  Texture : AnyPtr -> SDLTexture
+
+public export
 data SDLRenderer : Type where
   Renderer : AnyPtr -> SDLRenderer
 
@@ -141,20 +129,15 @@ data SDLRendererFlags : Type where
   SDLRendererPresentVSync : SDLRendererFlags
   SDLRendererTargetTexture : SDLRendererFlags
 
-export
-Eq SDLRendererFlags where
-  SDLRendererSoftware == SDLRendererSoftware = True
-  SDLRendererAccelerated == SDLRendererAccelerated = True
-  SDLRendererPresentVSync == SDLRendererPresentVSync = True
-  SDLRendererTargetTexture == SDLRendererTargetTexture = True
-  _ == _ = False
+%runElab deriveUnitSumEq Export `{{SDLRendererFlags}}
+%runElab deriveUnitSumShow Export `{{SDLRendererFlags}}
 
 export
-rendererFlagsToInt : SDLRendererFlags -> Int
-rendererFlagsToInt SDLRendererSoftware      = 0x00000001
-rendererFlagsToInt SDLRendererAccelerated   = 0x00000002
-rendererFlagsToInt SDLRendererPresentVSync  = 0x00000004
-rendererFlagsToInt SDLRendererTargetTexture = 0x00000008
+rendererFlagsToBits : SDLRendererFlags -> Bits32
+rendererFlagsToBits SDLRendererSoftware      = 0x00000001
+rendererFlagsToBits SDLRendererAccelerated   = 0x00000002
+rendererFlagsToBits SDLRendererPresentVSync  = 0x00000004
+rendererFlagsToBits SDLRendererTargetTexture = 0x00000008
 
 public export
 data SDLRawEvent : Type where
@@ -171,28 +154,8 @@ data SDLEventType : Type where
   SDLMouseButtonUp : SDLEventType
   SDLGenericEvent : SDLEventType
 
-export
-Eq SDLEventType where
-  SDLQuit == SDLQuit = True
-  SDLWindowEvent == SDLWindowEvent = True
-  SDLKeyDown == SDLKeyDown = True
-  SDLKeyUp == SDLKeyUp = True
-  SDLMouseMotion == SDLMouseMotion = True
-  SDLMouseButtonDown == SDLMouseButtonDown = True
-  SDLMouseButtonUp == SDLMouseButtonUp = True
-  SDLGenericEvent == SDLGenericEvent = True
-  _ == _ = False
-
-export
-Show SDLEventType where
-  show SDLQuit = "SDLQuit"
-  show SDLWindowEvent = "SDLWindowEvent"
-  show SDLKeyDown = "SDLKeyDown"
-  show SDLKeyUp = "SDLKeyUp"
-  show SDLMouseMotion = "SDLMouseMotion"
-  show SDLMouseButtonDown = "SDLMouseButtonDown"
-  show SDLMouseButtonUp = "SDLMouseButtonUp"
-  show SDLGenericEvent = "SDLGenericEvent"
+%runElab deriveUnitSumEq Export `{{SDLEventType}}
+%runElab deriveUnitSumShow Export `{{SDLEventType}}
 
 export
 eventFromInt : Int -> SDLEventType
@@ -208,14 +171,8 @@ eventFromInt x = SDLGenericEvent
 public export
 data MouseButton = Left | Middle | Right | X1 | X2
 
-export
-Eq MouseButton where
-  Left == Left = True
-  Middle == Middle = True
-  Right == Right = True
-  X1 == X1 = True
-  X2 == X2 = True
-  _ == _ = False
+%runElab deriveUnitSumEq Export `{{MouseButton}}
+%runElab deriveUnitSumShow Export `{{MouseButton}}
 
 export
 mouseButtonToBits : MouseButton -> Bits8
@@ -237,11 +194,8 @@ mouseButtonFromBits _ = Nothing
 public export
 data ButtonState = Pressed | Released
 
-export
-Eq ButtonState where
-  Pressed == Pressed = True
-  Released == Released = True
-  _ == _ = False
+%runElab deriveUnitSumEq Export `{{ButtonState}}
+%runElab deriveUnitSumShow Export `{{ButtonState}}
 
 export
 buttonStateToBits : ButtonState -> Bits8
