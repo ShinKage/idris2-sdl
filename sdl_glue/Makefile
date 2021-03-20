@@ -22,7 +22,8 @@ else
 endif
 
 LIBTARGET = libidrissdl.$(SHLIB_SUFFIX)
-INSTALLDIR = `${IDRIS} --libdir`/sdl/lib
+VERSION = 0.1.0
+INSTALLDIR = `${IDRIS} --libdir`/sdl-$(VERSION)
 
 HDRS = idris_sdl.h
 OBJS = idris_sdl.o
@@ -39,7 +40,9 @@ clean:
 	rm -f $(OBJS) $(LIBTARGET)
 
 install:
-	@if ! [ -d $(INSTALLDIR) ]; then mkdir -p $(INSTALLDIR); fi
-	install $(LIBTARGET) $(HDRS) $(INSTALLDIR)
+	mkdir -p $(INSTALLDIR)/lib
+	mkdir -p $(INSTALLDIR)/include
+	install -m 755 $(LIBTARGET) $(INSTALLDIR)/lib
+	install -m 644 $(HDRS) $(INSTALLDIR)/include
 
 .PHONY: install clean

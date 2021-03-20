@@ -135,7 +135,8 @@ delaySDL = delay
 
 export
 handleInitedError : LinearIO io => (1 _ : SDL Inited) -> (1 fn : L io a) -> L io a
-handleInitedError s fn = do quitSDL s; fn
+handleInitedError s fn = do quitSDL s
+                            fn
 
 export
 handleWindowedError : LinearIO io => (1 _ : SDL WithWindow) -> (1 fn : L io a) -> L io a

@@ -1,5 +1,6 @@
 module SDL.Keysym
 
+import Data.Bits
 import SDL.Elab
 
 %default total
@@ -423,14 +424,14 @@ namespace Keymod
 
   export
   keymodsToBits : List Keymod -> Bits16
-  keymodsToBits mods = foldl prim__or_Bits16 0 (keymodMask <$> mods)
+  keymodsToBits mods = foldl (.|.) 0 (keymodMask <$> mods)
 
   export
   keymodsFromBits : Bits16 -> List Keymod
   keymodsFromBits mods = foldl convert [] masks
     where
       convert : List Keymod -> (Keymod, Bits16) -> List Keymod
-      convert acc (mod, mask) = if prim__and_Bits16 mask mods /= 0 then mod :: acc else acc
+      convert acc (mod, mask) = if mask .&. mods /= 0 then mod :: acc else acc
 
       masks : List (Keymod, Bits16)
       masks = map (\m => (m, keymodMask m)) [LShift, RShift, LCtrl, RCtrl, LAlt, RAlt, LGui, RGui, Num, Caps, Mode]

@@ -1,5 +1,6 @@
 module GameOfLife
 
+import Control.Comonad
 import Data.List
 import Data.Vect
 import Data.Strings
@@ -7,10 +8,6 @@ import System.Random
 import System.Clock
 
 %default total
-
-snoc : Vect len a -> a -> Vect (S len) a
-snoc [] x = [x]
-snoc (y :: xs) x = y :: snoc xs x
 
 iterateN : (n : Nat) -> (a -> a) -> a -> Vect n a
 iterateN 0 f x = []
@@ -43,27 +40,12 @@ leftShift (MkRingZipper ls f rs) =
       rs' = f :: init rs in
       MkRingZipper ls' (head ls) rs'
 
--- export
--- Comonad ({n : Nat} -> RingZipper n) where
---   extract z = z.focus
---   duplicate z = 
---   --                   let ls = iterate leftShift (leftShift z)
---   --                   rs = iterate rightShift (rightShift z) in
---   --                   MkZipper ls z rs
-
 export
-extract : RingZipper n a -> a
-extract z = z.focus
-
-export
-duplicate : {n : Nat} -> RingZipper (S n) a -> RingZipper (S n) (RingZipper (S n) a)
-duplicate z = let ls = reverse $ iterateN (S n) leftShift (leftShift z)
-                  rs = iterateN (S n) rightShift (rightShift z) in
-                  MkRingZipper ls z rs
-
-export
-extend : {n : Nat} -> (RingZipper (S n) a -> b) -> RingZipper (S n) a -> RingZipper (S n) b
-extend f = map f . duplicate
+{n : Nat} -> Comonad (RingZipper (S n)) where
+  extract z = z.focus
+  duplicate z = let ls = reverse $ iterateN (S n) leftShift (leftShift z)
+                    rs = iterateN (S n) rightShift (rightShift z) in
+                    MkRingZipper ls z rs
 
 public export
 data Game : Nat -> Type -> Type where
@@ -90,22 +72,16 @@ namespace Game
   downShift : Game (S n) a -> Game (S n) a
   downShift (MkGame g) = MkGame (rightShift g)
 
-  export
-  extract : Game n a -> a
+export
+{n : Nat} -> Comonad (Game (S n)) where
   extract (MkGame g) = extract $ extract g
 
-  export
-  duplicate : {n : Nat} -> Game (S n) a -> Game (S n) (Game (S n) a)
-  duplicate {n} g = let il = iterateN (S n) leftShift (leftShift g)
-                        ir = iterateN (S n) rightShift (rightShift g)
-                        inner = MkRingZipper il g ir
-                        ol = iterateN (S n) (map upShift) (map upShift inner)
-                        or = iterateN (S n) (map downShift) (map downShift inner) in
-                        MkGame (MkRingZipper ol inner or)
-
-  export
-  extend : {n : Nat} -> (Game (S n) a -> b) -> Game (S n) a -> Game (S n) b
-  extend f = map f . duplicate
+  duplicate g = let il = iterateN (S n) leftShift (leftShift g)
+                    ir = iterateN (S n) rightShift (rightShift g)
+                    inner = MkRingZipper il g ir
+                    ol = iterateN (S n) (map upShift) (map upShift inner)
+                    or = iterateN (S n) (map downShift) (map downShift inner) in
+                    MkGame (MkRingZipper ol inner or)
 
 public export
 data Cell = Alive | Dead
@@ -125,7 +101,7 @@ isDead : (1 _ : Cell) -> Bool
 isDead Alive = False
 isDead Dead = True
 
-aliveNeighbours : Game (S n) Cell -> Nat
+aliveNeighbours : {n : Nat} -> Game (S n) Cell -> Nat
 aliveNeighbours g = let br = extract . upShift . leftShift $ g
                         bc = extract . upShift $ g
                         bl = extract . upShift . rightShift $ g
@@ -135,11 +111,11 @@ aliveNeighbours g = let br = extract . upShift . leftShift $ g
                         tc = extract . downShift $ g
                         tl = extract . downShift . rightShift $ g in
                         sum $ map toNat $ the (List Cell) [tl, tc, tr, cl, cr, bl, bc, br]
-  where toNat : (1 _ : Cell) -> Nat
+  where toNat : Cell -> Nat
         toNat Alive = 1
         toNat Dead = 0
 
-stepCell : Game (S n) Cell -> Cell
+stepCell : {n : Nat} -> Game (S n) Cell -> Cell
 stepCell g = let cell = extract g
                  ns = aliveNeighbours g in
                  if ns > 3 || ns < 2 then Dead
@@ -187,7 +163,7 @@ showGameR (MkGame (MkRingZipper top center bottom)) =
 
 export
 randomGame : {radius : Nat} -> IO (Game (S radius) Cell)
-randomGame {radius} = do
+randomGame = do
     before <- traverse (const randomZipper) $ replicate (S radius) ()
     focus <- randomZipper
     after <- traverse (const randomZipper) $ replicate (S radius) ()
@@ -196,7 +172,7 @@ randomGame {radius} = do
     fromInt : Int -> Cell
     fromInt x = if x < 0 then Dead else Alive
     randomZipper : {n : Nat} -> IO (RingZipper n Cell)
-    randomZipper {n} = do
+    randomZipper = do
       before <- traverse (const $ fromInt <$> randomIO) $ replicate n ()
       focus <- fromInt <$> randomIO
       after <- traverse (const $ fromInt <$> randomIO) $ replicate n ()

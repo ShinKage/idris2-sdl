@@ -1,11 +1,13 @@
 package sdl
 
 sourcedir = "src"
+version = 0.1.0
 
 modules =
     SDL.Keysym,
     SDL.Types,
     SDL.Foreign,
+    SDL.Elab,
     SDL
 
 depends = contrib

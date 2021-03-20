@@ -259,7 +259,7 @@ record SDLRect where
 
 public export
 data SDLColor : Type where
-  RGBA : (r : Nat) -> LTE r 255 =>
-         (g : Nat) -> LTE g 255 =>
-         (b : Nat) -> LTE b 255 =>
-         (a : Nat) -> LTE a 255 => SDLColor
+  RGBA : (r : Nat) -> (0 _ : LTE r 255) =>
+         (g : Nat) -> (0 _ : LTE g 255) =>
+         (b : Nat) -> (0 _ : LTE b 255) =>
+         (a : Nat) -> (0 _ : LTE a 255) => SDLColor

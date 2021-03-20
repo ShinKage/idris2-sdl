@@ -1,5 +1,6 @@
 module SDL.Foreign
 
+import Data.Bits
 import Data.Maybe
 import System.FFI
 import SDL.Types
@@ -28,13 +29,19 @@ getImageError : HasIO io => io SDLError
 getImageError = ImageError <$> primIO prim__sdlGetError
 
 checkRetPtr : HasIO io => AnyPtr -> {default getError handler : io SDLError} -> io (Either SDLError ())
-checkRetPtr ptr {handler} =
-  if prim__nullAnyPtr ptr == 1
+checkRetPtr ptr =
+  if prim__nullAnyPtr ptr /= 0
      then Left <$> handler
      else pure $ Right ()
 
-checkRetNum : (Num n, Eq n, HasIO io) => n -> {default getError handler : io SDLError} -> io (Either SDLError ())
-checkRetNum ret {handler} =
+checkNonZeroRet : (Num n, Eq n, HasIO io) => n -> {default getError handler : io SDLError} -> io (Either SDLError ())
+checkNonZeroRet ret =
+  if ret == 0
+     then Left <$> handler
+     else pure $ Right ()
+
+checkZeroRet : (Num n, Eq n, HasIO io) => n -> {default getError handler : io SDLError} -> io (Either SDLError ())
+checkZeroRet ret =
   if ret /= 0
      then Left <$> handler
      else pure $ Right ()
@@ -45,9 +52,9 @@ prim__sdlInit : Bits32 -> PrimIO Int
 export
 init : HasIO io => List SDLInitFlags -> io (Either SDLError ())
 init flags = do
-  let flags' = foldl prim__or_Bits32 0 (initFlagsToBits <$> flags)
+  let flags' = foldl (.|.) 0 (initFlagsToBits <$> flags)
   res <- primIO $ prim__sdlInit flags'
-  checkRetNum res
+  checkZeroRet res
 
 %foreign libsdl "sdl_quit"
 prim__sdlQuit : PrimIO ()
@@ -65,13 +72,15 @@ prim__sdlCreateWindow : String -> Int -> Int -> Int -> Int -> Bits32 -> PrimIO A
 export
 createWindow : HasIO io => SDLWindowOptions -> io (Either SDLError SDLWindow)
 createWindow opts = do
-  let flags = foldl prim__or_Bits32 0 (windowFlagsToBits <$> opts.flags)
+  let flags = foldl (.|.) 0 (windowFlagsToBits <$> opts.flags)
   let x = windowPosToInt opts.x
   let y = windowPosToInt opts.y
   win <- primIO $ prim__sdlCreateWindow opts.name x y opts.width opts.height flags
-  checkRetPtr win
+  Right () <- checkRetPtr win
+    | Left err => pure $ Left err
   idx <- primIO $ prim__sdlGetWindowID win
-  checkRetNum idx
+  Right () <- checkNonZeroRet idx
+    | Left err => pure $ Left err
   pure $ Right (Window idx win)
 
 %foreign libsdl "sdl_destroy_window"
@@ -88,9 +97,10 @@ export
 createRenderer : HasIO io => SDLWindow -> Maybe Int -> List SDLRendererFlags -> io (Either SDLError SDLRenderer)
 createRenderer (Window _ win) index flags = do
   let index' = fromMaybe (-1) index
-  let flags' = foldl prim__or_Bits32 0 (rendererFlagsToBits <$> flags)
+  let flags' = foldl (.|.) 0 (rendererFlagsToBits <$> flags)
   rnd <- primIO $ prim__sdlCreateRenderer win index' flags'
-  checkRetPtr rnd
+  Right () <- checkRetPtr rnd
+    | Left err => pure $ Left err
   pure $ Right (Renderer rnd)
 
 %foreign libsdl "sdl_destroy_renderer"
@@ -107,7 +117,7 @@ export
 renderClear : HasIO io => SDLRenderer -> io (Either SDLError ())
 renderClear (Renderer rnd) = do
   res <- primIO $ prim__sdlRenderClear rnd
-  checkRetNum res
+  checkZeroRet res
 
 %foreign libsdl "sdl_render_present"
 prim__sdlRenderPresent : AnyPtr -> PrimIO ()
@@ -127,7 +137,7 @@ setRenderDrawColor (Renderer rnd) (RGBA r g b a) = do
   let b' = cast $ natToInteger b
   let a' = cast $ natToInteger a
   res <- primIO $ prim__sdlSetRenderDrawColor rnd r' g' b' a'
-  checkRetNum res
+  checkZeroRet res
 
 %foreign libsdl "sdl_render_draw_point"
 prim__sdlRenderDrawPoint : AnyPtr -> Int -> Int -> PrimIO Int
@@ -136,7 +146,7 @@ export
 renderDrawPoint : HasIO io => SDLRenderer -> SDLPoint -> io (Either SDLError ())
 renderDrawPoint (Renderer rnd) (MkPoint x y) = do
   res <- primIO $ prim__sdlRenderDrawPoint rnd x y
-  checkRetNum res
+  checkZeroRet res
 
 %foreign libsdl "sdl_render_draw_line"
 prim__sdlRenderDrawLine : AnyPtr -> Int -> Int -> Int -> Int -> PrimIO Int
@@ -145,7 +155,7 @@ export
 renderDrawLine : HasIO io => SDLRenderer -> SDLPoint -> SDLPoint -> io (Either SDLError ())
 renderDrawLine (Renderer rnd) p1 p2 = do
   res <- primIO $ prim__sdlRenderDrawLine rnd p1.x p1.y p2.x p2.y
-  checkRetNum res
+  checkZeroRet res
 
 %foreign libsdl "sdl_render_draw_rect"
 prim__sdlRenderDrawRect : AnyPtr -> Int -> Int -> Int -> Int -> PrimIO Int
@@ -154,7 +164,7 @@ export
 renderDrawRect : HasIO io => SDLRenderer -> SDLRect -> io (Either SDLError ())
 renderDrawRect (Renderer rnd) rect = do
   res <- primIO $ prim__sdlRenderDrawRect rnd rect.x rect.y rect.width rect.height
-  checkRetNum res
+  checkZeroRet res
 
 %foreign libsdl "sdl_render_fill_rect"
 prim__sdlRenderFillRect : AnyPtr -> Int -> Int -> Int -> Int -> PrimIO Int
@@ -163,7 +173,7 @@ export
 renderFillRect : HasIO io => SDLRenderer -> SDLRect -> io (Either SDLError ())
 renderFillRect (Renderer rnd) rect = do
   res <- primIO $ prim__sdlRenderFillRect rnd rect.x rect.y rect.width rect.height
-  checkRetNum res
+  checkZeroRet res
 
 %foreign libsdl "sdl_render_copy"
 prim__sdlRenderCopy : AnyPtr -> AnyPtr -> Int -> Int -> Int -> Int -> Int -> Int -> Int -> Int -> PrimIO Int
@@ -173,7 +183,7 @@ renderCopy : HasIO io => SDLRenderer -> SDLTexture -> SDLRect -> SDLRect -> io (
 renderCopy (Renderer rnd) (Texture txt) src dst = do
   ret <- primIO $ prim__sdlRenderCopy rnd txt src.x src.y src.width src.height
                                               dst.x dst.y dst.width dst.height
-  checkRetNum ret
+  checkZeroRet ret
 
 %foreign libsdl "sdl_poll_event"
 prim__sdlPollEvent : PrimIO AnyPtr
@@ -351,7 +361,8 @@ export
 imgLoad : HasIO io => String -> io (Either SDLError SDLSurface)
 imgLoad str = do
   ptr <- primIO $ prim__sdlImgLoad str
-  checkRetPtr ptr {handler = getImageError}
+  Right () <- checkRetPtr ptr {handler = getImageError}
+    | Left err => pure $ Left err
   pure $ Right (Surface ptr)
 
 %foreign libsdl "sdl_create_texture_from_surface"
@@ -361,7 +372,8 @@ export
 createTextureFromSurface : HasIO io => SDLRenderer -> SDLSurface -> io (Either SDLError SDLTexture)
 createTextureFromSurface (Renderer rnd) (Surface srf) = do
   ptr <- primIO $ prim__sdlCreateTextureFromSurface rnd srf
-  checkRetPtr ptr
+  Right () <- checkRetPtr ptr
+    | Left err => pure $ Left err
   pure $ Right (Texture ptr)
 
 %foreign libsdl "sdl_destroy_texture"
