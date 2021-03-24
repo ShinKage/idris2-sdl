@@ -167,7 +167,7 @@ void* sdl_create_texture_from_surface(void* rnd, void* srf) {
     return (void*) texture;
 }
 
-void destroyTexture(void* txt) {
+void sdl_destroy_texture(void* txt) {
     SDL_Texture* texture = (SDL_Texture*) txt;
     SDL_DestroyTexture(texture);
 }
