@@ -76,7 +76,7 @@ void sdl_free_raw_keyboardevent(sdl_raw_mousebuttonevent* evt);
 void sdl_free_raw_surface(void* srf);
 
 void* sdl_create_texture_from_surface(void* rnd, void* srf);
-void destroyTexture(void* txt);
+void sdl_destroy_texture(void* txt);
 
 int sdl_render_copy(void* rnd, void* txt, int srcx, int srcy, int srcw, int srch, int dstx, int dsty, int dstw,
                     int dsth);
