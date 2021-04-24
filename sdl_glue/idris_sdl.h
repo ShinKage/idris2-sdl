@@ -93,4 +93,6 @@ void* sdl_ttf_open_font(const char* path, int pt);
 
 void sdl_ttf_close_font(void* font);
 
+void* sdl_ttf_render_text_solid(void* font, const char* text, uint8_t r, uint8_t g, uint8_t b, uint8_t a);
+
 #endif

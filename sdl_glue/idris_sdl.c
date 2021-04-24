@@ -205,3 +205,8 @@ void* sdl_ttf_open_font(const char* path, int ps) {
 void sdl_ttf_close_font(void* font) {
     TTF_CloseFont(font);
 }
+
+void* sdl_ttf_render_text_solid(void* font, const char* text, uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
+    SDL_Color color = {r,g,b,a};
+    TTF_RenderText_Solid(font, text, color);
+} 

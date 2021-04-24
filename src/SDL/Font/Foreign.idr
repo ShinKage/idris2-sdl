@@ -5,6 +5,8 @@ import Data.Maybe
 import System.FFI
 import SDL.Font.Types
 import SDL.Keysym
+import SDL.Types
+import SDL.Foreign
 
 libsdl : String -> String
 libsdl fn = "C:" ++ fn ++ ",libidrissdl"
@@ -67,3 +69,18 @@ prim__sdlTtfCloseFont : AnyPtr -> PrimIO ()
 export
 closeFont : HasIO io => SDLFont -> io ()
 closeFont (Font raw) = primIO $ prim__sdlTtfCloseFont raw
+
+%foreign libsdl "sdl_ttf_render_text_solid"
+prim__sdlTtfRenderTextSolid : AnyPtr -> String -> Bits8 -> Bits8 -> Bits8 -> Bits8 -> PrimIO AnyPtr
+
+export
+renderTextSolid : HasIO io => SDLFont -> String -> SDLColor -> io (Either SDLFontError SDLSurface)
+renderTextSolid (Font fnt) x (RGBA r g b a) = do
+  let r' = cast $ natToInteger r
+  let g' = cast $ natToInteger g
+  let b' = cast $ natToInteger b
+  let a' = cast $ natToInteger a
+  ptr <- primIO $ prim__sdlTtfRenderTextSolid fnt x r' g' b' a'
+  Right () <- checkRetPtr ptr
+    | Left err => pure $ Left err
+  pure $ Right (Surface ptr)
