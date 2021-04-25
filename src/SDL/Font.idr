@@ -31,6 +31,21 @@ data CoHVect : Vect n Type -> Type where
   CoElem : Elem r rs => r -> CoHVect rs
 
 public export
+data AllShow : Vect n Type -> Type where
+  NoShow : AllShow []
+  AnotherShow : Show h -> AllShow t -> AllShow (h::t)
+
+public export
+findShow : AllShow xs -> Elem x xs -> Show x
+findShow NoShow _ impossible
+findShow (AnotherShow x ts) Here = x
+findShow (AnotherShow _ ts) (There p) = findShow ts p
+
+public export
+(ps : AllShow xs) => Show (CoHVect xs) where
+  show (CoElem @{elem} x) = show @{findShow ps elem} x
+
+public export
 data SDLTTF' : HVect [SDLState, SDLTTFState] -> Type where
   WithSDLAndTTF : (1 _ : SDL x) -> (1 _ : SDLTTF y) -> SDLTTF' [x, y]
 
