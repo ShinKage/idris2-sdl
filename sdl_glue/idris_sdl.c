@@ -184,3 +184,29 @@ int sdl_render_copy(void* rnd, void* txt, int srcx, int srcy, int srcw, int srch
 void sdl_delay(uint32_t ms) {
     SDL_Delay(ms);
 }
+
+const char* sdl_ttf_get_error() {
+    return TTF_GetError();
+}
+
+int sdl_ttf_init() {
+    return TTF_Init();
+}
+
+void sdl_ttf_quit() {
+    TTF_Quit();
+}
+
+void* sdl_ttf_open_font(const char* path, int ps) {
+    TTF_Font* font = TTF_OpenFont(path, ps);
+    return (void*) font;
+}
+
+void sdl_ttf_close_font(void* font) {
+    TTF_CloseFont(font);
+}
+
+void* sdl_ttf_render_text_solid(void* font, const char* text, uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
+    SDL_Color color = {r,g,b,a};
+    TTF_RenderText_Solid(font, text, color);
+} 

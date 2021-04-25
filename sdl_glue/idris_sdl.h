@@ -6,6 +6,7 @@
 
 #include <SDL.h>
 #include <SDL_image.h>
+#include <SDL_ttf.h>
 
 void sdl_free(void* ptr);
 void sdl_delay(uint32_t ms);
@@ -82,5 +83,16 @@ int sdl_render_copy(void* rnd, void* txt, int srcx, int srcy, int srcw, int srch
                     int dsth);
 
 void* sdl_img_load(const char* path);
+
+const char* sdl_ttf_get_error();
+
+int sdl_ttf_init();
+void sdl_ttf_quit();
+
+void* sdl_ttf_open_font(const char* path, int pt);
+
+void sdl_ttf_close_font(void* font);
+
+void* sdl_ttf_render_text_solid(void* font, const char* text, uint8_t r, uint8_t g, uint8_t b, uint8_t a);
 
 #endif

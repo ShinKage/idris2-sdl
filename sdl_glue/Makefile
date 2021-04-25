@@ -25,10 +25,10 @@ LIBTARGET = libidrissdl.$(SHLIB_SUFFIX)
 VERSION = 0.1.0
 INSTALLDIR = `${IDRIS} --libdir`/sdl-$(VERSION)
 
-HDRS = idris_sdl.h
+HDRS = idris_sdl.h 
 OBJS = idris_sdl.o
 
-SDL_LIBS := -lSDL2 $(shell sdl2-config --libs) -lSDL2_image
+SDL_LIBS := -lSDL2 $(shell sdl2-config --libs) -lSDL2_image -lSDL2_ttf
 SDL_FLAGS := $(shell sdl2-config --cflags)
 
 CFLAGS = $(SDL_FLAGS)

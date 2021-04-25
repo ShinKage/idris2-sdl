@@ -4,6 +4,9 @@ sourcedir = "src"
 version = 0.1.0
 
 modules =
+    SDL.Font.Foreign,
+    SDL.Font.Types,
+    SDL.Font,
     SDL.Keysym,
     SDL.Types,
     SDL.Foreign,
