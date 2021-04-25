@@ -39,7 +39,7 @@ data SDLTTFErrorPath : (ok : SDLTTFState) -> (err : SDLTTFState) -> Type where
 
 public export
 data SDLTTF' : HVect [SDLState, SDLTTFState] -> Type where
-  RenderableFont : SDL WithRenderer -> SDLTTF Inited -> SDLTTF' [WithRenderer, Inited]
+  RenderableFont : (1 _ : SDL WithRenderer) -> (1 _ : SDLTTF Inited) -> SDLTTF' [WithRenderer, Inited]
 
 public export
 SDLTTFErrorPath : SDLTTFState -> SDLTTFState -> Type
@@ -54,6 +54,20 @@ initSDLTTF : LinearIO io => (onerr : SDLFontError -> L io ret) -> (onok : (1 _ :
 initSDLTTF onerr onok = case !(SDL.Font.Foreign.init) of
   Left err => onerr err
   Right () => onok Initial
+
+export
+withFont' : LinearIO io
+        => (path : String)
+        -> (pt   : Int)
+        -> (handler : (1 _ : SDLFont) -> (1 _ : SDLTTF' x) -> L io { use = 1 } (SDLTTFErrorPath' y x))
+        -> (1 _ : SDLTTF' x)
+        -> L io {use = 1} (SDLTTFErrorPath' y x)
+withFont' path pt handler x = case !(openFont path pt) of
+  Left err => pure1 $ Failure x (CoElem err)
+  Right fnt => do
+    ret <- handler fnt x
+    closeFont fnt
+    pure1 ret
 
 export
 withFont : LinearIO io
