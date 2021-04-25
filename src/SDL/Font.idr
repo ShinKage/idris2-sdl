@@ -7,6 +7,7 @@ import public SDL.Font.Types
 import SDL.Font.Foreign
 import SDL.Foreign
 import SDL
+import Data.HVect
 import Data.Vect
 import Data.Vect.Elem
 
@@ -15,12 +16,10 @@ import Data.Vect.Elem
 public export
 data SDLTTFState : Type where
   Inited : SDLTTFState
-  WithRenderer : SDLTTFState
 
 public export
 data SDLTTF : SDLTTFState -> Type where
   Initial : SDLTTF Inited
-  Rendered : SDL WithRenderer -> SDLTTF WithRenderer
 
 public export
 data ErrorPath : ( a : Type ) -> ( b : a -> Type ) -> ( e : Type ) -> (ok : a) -> (err : a) -> Type where
@@ -39,12 +38,16 @@ data SDLTTFErrorPath : (ok : SDLTTFState) -> (err : SDLTTFState) -> Type where
   --}
 
 public export
+data SDLTTF' : HVect [SDLState, SDLTTFState] -> Type where
+  RenderableFont : SDL WithRenderer -> SDLTTF Inited -> SDLTTF' [WithRenderer, Inited]
+
+public export
 SDLTTFErrorPath : SDLTTFState -> SDLTTFState -> Type
 SDLTTFErrorPath = ErrorPath SDLTTFState SDLTTF SDLFontError
 
 public export
-SDLTTFErrorPath' : SDLTTFState -> SDLTTFState -> Type
-SDLTTFErrorPath' = ErrorPath SDLTTFState SDLTTF (CoHVect [SDLError, SDLFontError])
+SDLTTFErrorPath' : HVect [SDLState, SDLTTFState] -> HVect [SDLState, SDLTTFState] -> Type
+SDLTTFErrorPath' = ErrorPath (HVect [SDLState, SDLTTFState]) SDLTTF' (CoHVect [SDLError, SDLFontError])
 
 export
 initSDLTTF : LinearIO io => (onerr : SDLFontError -> L io ret) -> (onok : (1 _ : SDLTTF Inited) -> L io ret) -> L io ret
@@ -72,20 +75,21 @@ withSolidSurfaceRender : LinearIO io
                       -> String
                       -> SDLColor
                       -> (handler : (1 _ : SDLTexture) -> (1 _ : SDL WithRenderer) -> L io { use = 1 } (SDLErrorPath WithRenderer WithRenderer))
-                      -> (1 _ : SDLTTF WithRenderer)
-                      -> L io { use = 1 } (SDLTTFErrorPath' WithRenderer WithRenderer)
-withSolidSurfaceRender (Font fnt) text color handler (Rendered (Rendered win rnd)) =
+                      -> (1 _ : SDL WithRenderer)
+                      -> (1 _ : SDLTTF Inited)
+                      -> L io { use = 1 } (SDLTTFErrorPath' [WithRenderer, Inited] [WithRenderer, Inited])
+withSolidSurfaceRender (Font fnt) text color handler (Rendered win rnd) Initial =
   case !(renderTextSolid (Font fnt) text color) of
-       Left err => pure1 $ (Success (Rendered (Rendered win rnd)))
+       Left err => pure1 $ Success $ RenderableFont (Rendered win rnd) Initial
        Right srf => case !(createTextureFromSurface rnd srf) of
                            Left err => do freeSurface srf
-                                          pure1 $ Failure (Rendered (Rendered win rnd)) (CoElem err)
+                                          pure1 $ Failure (RenderableFont (Rendered win rnd) Initial) (CoElem err)
                            Right txt => do freeSurface srf
                                            ret <- handler txt (Rendered win rnd)
                                            destroyTexture txt
                                            case ret of
-                                                Success (Rendered win rnd) => pure1 (Success (Rendered (Rendered win rnd)))
-                                                Failure (Rendered win rnd) err => pure1 (Failure (Rendered (Rendered win rnd)) (CoElem err))
+                                                Success (Rendered win rnd) => pure1 $ Success $ RenderableFont (Rendered win rnd) Initial
+                                                Failure (Rendered win rnd) err => pure1 $ Failure (RenderableFont (Rendered win rnd) Initial) (CoElem err)
 
 export
 quitSDLTTF : LinearIO io => (1 _ : SDLTTF Inited) -> L io ()
